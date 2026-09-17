@@ -248,10 +248,18 @@
   <section id="data">
     <h2>Data</h2>
     <p>
-      <strong>Release:</strong> the FlyRank ML Internship starter dataset,
-      <code>content_refresh_anonymized.csv</code> — 30,000 rows × 44 columns, one row per
-      pseudonymized content item, 32 pseudonymized clients, metrics aggregated over a trailing
-      90-day window ending at export time. The file ships pre-anonymized: no client names, URLs,
+      <strong>Release:</strong> the FlyRank ML Internship <em>starter</em> release — a single
+      flat, pre-joined table, <code>content_refresh_anonymized.csv</code> (not the multi-table
+      full warehouse release, which ships separately as <code>dim_clients</code>,
+      <code>dim_content</code>, and daily fact tables on Hugging Face). 30,000 rows × 44 columns,
+      one row per pseudonymized content item, 32 pseudonymized clients.
+    </p>
+    <p>
+      <strong>Date window:</strong> each row is a trailing-90-day aggregate ending at the file's
+      export snapshot — a single static export, not a range of calendar dates a reader could
+      re-query. That's a real, named limitation (see Limitations), not glossed over: this paper
+      trades the full warehouse's true daily granularity for the starter release's speed and
+      safety while learning the method. The file ships pre-anonymized: no client names, URLs,
       titles, or raw keywords appear anywhere in it.
     </p>
     <p>
@@ -384,6 +392,12 @@
   <section id="limitations">
     <h2>Limitations</h2>
     <ul>
+      <li><strong>Built on the starter release, not the full warehouse.</strong> This paper uses
+        the single-table, pre-joined starter export (30k rows) rather than the full multi-table
+        warehouse (~79M rows) also available for this internship. That's a deliberate scope
+        choice for a first honest pass, not an oversight — a warehouse-scale version of this
+        question, with real daily date windows instead of one static snapshot, is the natural
+        next iteration.</li>
       <li><strong>Observational, not causal.</strong> Every number here comes from one static
         snapshot. Nothing supports "changing X will cause Y" — only "pages that look like this,
         in this data, tend to also look like that."</li>
@@ -474,8 +488,8 @@ jupyter notebook work/notebooks/capstone.ipynb
   <section id="acknowledgments">
     <h2>Acknowledgments &amp; data credit</h2>
     <p>
-      Built on the <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank</a> ML
-      Internship dataset — an anonymized, public-safe slice of real production search data,
+      <a href="https://flyrank.ai" target="_blank" rel="noopener">Built on the FlyRank ML
+      Internship dataset</a> — an anonymized, public-safe slice of real production search data,
       provided for this internship program. Thanks to the FlyRank ML track for the framework
       this capstone follows: baseline before model, honest splits before headline numbers, and
       limitations written by the author before a reader has to find them.
@@ -488,7 +502,7 @@ jupyter notebook work/notebooks/capstone.ipynb
 
 <footer class="credit">
   <div class="page">
-    Built on the <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank ML Internship dataset</a> ·
+    <a href="https://flyrank.ai" target="_blank" rel="noopener">Built on the FlyRank ML Internship dataset</a> ·
     <a href="https://github.com/Bander03/FlyRank_Intern" target="_blank" rel="noopener">Repository</a> ·
     <a href="https://bander03.github.io/" target="_blank" rel="noopener">Author portfolio</a>
   </div>
