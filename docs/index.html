@@ -186,9 +186,11 @@
   <div class="abstract">
     <div class="eyebrow">Abstract</div>
     <p>
-      Search-visible pages sometimes underperform click-through-rate (CTR) expectations for
-      their content type, and a reviewer triaging thousands of pages needs to know which ones to
-      check first — this paper asks whether structural and visibility signals (position,
+      FlyRank publishes content into client websites at a scale no editor can watch page by
+      page, so pages routinely rank in a reachable position and still underperform
+      click-through-rate (CTR) for their content type — a title/snippet problem hiding behind a
+      metric nobody is watching that day; a reviewer triaging thousands of pages needs to know
+      which ones to check first. This paper asks whether structural and visibility signals (position,
       impression volume, content type, depth, freshness, engagement) can flag CTR risk
       <em>without ever reading CTR itself</em>. Using FlyRank's anonymized 30,000-row content
       dataset (22,006 active pages, 32 pseudonymized clients), Logistic Regression and Random
@@ -220,12 +222,17 @@
   <section id="intro">
     <h2>Introduction</h2>
     <p>
-      Content that ranks well in search quietly decays or underperforms, and most teams notice
-      too late — after impressions and clicks have already trended down for weeks. Out of
-      thousands of published pages, the operationally valuable question is not "is this page
-      good?" but <em>"which page should a human check first?"</em> — a ranking and triage
-      problem on messy, real search data, exactly the kind of problem where a learned model can
-      outperform a fixed rule once signals get numerous and tangled.
+      FlyRank operates content as infrastructure: it researches, writes, and publishes content
+      directly into client websites at a scale no single editor can watch page-by-page, then
+      relies on search data to know what to fix. That creates a specific, recurring failure mode:
+      a page can rank in a perfectly reachable position, get real impressions, and still convert
+      almost none of them into clicks — a title or snippet problem hiding behind a search-console
+      number nobody is watching that day. With thousands of pages live per client portfolio, the
+      operationally valuable question is never "is this page good?" — it's <em>"out of
+      everything live right now, which page should a human check first?"</em> A ranking and
+      triage problem on messy, real search data is exactly where a learned model can beat a fixed
+      rule, once the signals involved get numerous and tangled enough that no single threshold
+      captures them all.
     </p>
     <p>
       FlyRank's own product already computes rule-based flags for this
