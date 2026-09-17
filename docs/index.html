@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Can Structural Signals Flag Low-CTR Pages Without Reading CTR?</title>
+<meta name="description" content="A FlyRank ML internship research paper: can position, volume, and content signals predict which pages underperform CTR for their type, without reading CTR itself? Honest, client-grouped validation, on 22,006 real anonymized pages.">
+<link rel="canonical" href="https://bander03.github.io/FlyRank_Intern/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Can Structural Signals Flag Low-CTR Pages Without Reading CTR?">
+<meta property="og:description" content="A FlyRank ML internship research paper — honest, client-grouped validation of a CTR-risk model built without reading CTR.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%231A52B0'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Georgia,serif' font-size='28' fill='%23F7F8FA'%3EBS%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F8FA;
+    --surface: #FFFFFF;
+    --text: #14181F;
+    --muted: #55606F;
+    --accent: #1A52B0;
+    --accent-tint: #E7EEFB;
+    --border: #DDE3EC;
+    --good: #1A7A3A;
+    --bad: #B0231C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.7;
+    font-size: 16px;
+  }
+  h1, h2, h3 { font-family: 'Lora', Georgia, serif; font-weight: 600; line-height: 1.3; }
+  a { color: var(--accent); }
+  code { background: var(--accent-tint); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  .page { max-width: 700px; margin: 0 auto; padding: 0 1.25rem 5rem; }
+
+  header.masthead {
+    border-bottom: 1px solid var(--border);
+    padding: 1.1rem 0;
+    margin-bottom: 2.5rem;
+  }
+  header.masthead .page { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+  header.masthead .brand { display: flex; align-items: center; gap: 0.5rem; font-family: 'Lora', serif; font-size: 0.95rem; }
+  header.masthead .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  header.masthead nav a { font-size: 0.85rem; color: var(--muted); text-decoration: none; margin-left: 1rem; }
+  header.masthead nav a:hover { color: var(--accent); }
+
+  .eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 0.6rem;
+  }
+  h1.title { font-size: clamp(1.6rem, 4vw, 2.15rem); margin: 0 0 0.9rem; text-wrap: balance; }
+  .byline { color: var(--muted); font-size: 0.92rem; margin-bottom: 2rem; }
+  .byline a { color: var(--muted); text-decoration: underline; }
+
+  .abstract {
+    background: var(--surface);
+    border: 1.5px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.3rem 1.5rem;
+    margin-bottom: 2.5rem;
+    font-size: 0.98rem;
+  }
+  .abstract .eyebrow { margin-bottom: 0.5rem; }
+  .abstract p { margin: 0; color: var(--text); }
+
+  nav.toc {
+    background: var(--accent-tint);
+    border-radius: 10px;
+    padding: 1.1rem 1.4rem;
+    margin-bottom: 3rem;
+    font-size: 0.9rem;
+  }
+  nav.toc .eyebrow { color: var(--accent); margin-bottom: 0.6rem; }
+  nav.toc ol { margin: 0; padding-left: 1.2rem; columns: 2; column-gap: 1.5rem; }
+  nav.toc li { margin-bottom: 0.35rem; break-inside: avoid; }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  @media (max-width: 560px) { nav.toc ol { columns: 1; } }
+
+  section { margin-bottom: 3rem; scroll-margin-top: 1.5rem; }
+  section h2 {
+    font-size: 1.35rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.1rem;
+  }
+  section h3 { font-size: 1.05rem; margin: 1.5rem 0 0.6rem; }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.4rem; }
+
+  figure { margin: 1.3rem 0 1.8rem; }
+  figure img { width: 100%; height: auto; display: block; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+  figcaption { font-size: 0.85rem; color: var(--muted); font-style: italic; margin-top: 0.5rem; text-align: center; }
+
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.9rem; }
+  caption { caption-side: bottom; font-size: 0.85rem; color: var(--muted); font-style: italic; margin-top: 0.5rem; text-align: left; }
+  th, td { padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-weight: 600; background: var(--accent-tint); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  tr.highlight td { font-weight: 600; }
+
+  .callout {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.92rem;
+    color: var(--muted);
+  }
+  .callout.warn { border-left-color: var(--bad); }
+  .callout.good { border-left-color: var(--good); }
+  .callout strong { color: var(--text); }
+
+  .tier-row { display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin: 1rem 0 1.5rem; }
+  .tier {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1.1rem;
+  }
+  .tier .n { font-family: 'Lora', serif; color: var(--accent); font-size: 1.1rem; }
+  .tier .label { font-weight: 600; font-size: 0.9rem; }
+  .tier .desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .no-go { background: #FFF5F4; border: 1px solid #F3C9C4; border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0 1.5rem; }
+  .no-go .eyebrow { color: var(--bad); }
+  .no-go ul { margin-bottom: 0; }
+
+  .repro-block {
+    background: #14181F;
+    color: #E7EEFB;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    overflow-x: auto;
+    margin: 0.8rem 0 1.5rem;
+    white-space: pre;
+  }
+
+  footer.credit {
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+    margin-top: 3rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  footer.credit a { color: var(--accent); }
+
+  a.back-top { display: inline-block; font-size: 0.85rem; color: var(--muted); text-decoration: none; margin-top: 0.5rem; }
+  a.back-top:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="page">
+    <div class="brand"><span class="dot"></span> Bander Sidiq — FlyRank ML Internship Capstone</div>
+    <nav>
+      <a href="https://github.com/Bander03/FlyRank_Intern" target="_blank" rel="noopener">Repo</a>
+      <a href="https://bander03.github.io/" target="_blank" rel="noopener">Portfolio</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+
+  <div class="eyebrow">Research paper · FlyRank ML Internship Capstone</div>
+  <h1 class="title">Can Structural Signals Flag Low-CTR Pages Without Reading CTR?</h1>
+  <p class="byline">Bander Sidiq · September 2026 · Built on the FlyRank ML Internship dataset ·
+     <a href="https://github.com/Bander03/FlyRank_Intern" target="_blank" rel="noopener">source repo</a></p>
+
+  <div class="abstract">
+    <div class="eyebrow">Abstract</div>
+    <p>
+      Search-visible pages sometimes underperform click-through-rate (CTR) expectations for
+      their content type, and a reviewer triaging thousands of pages needs to know which ones to
+      check first — this paper asks whether structural and visibility signals (position,
+      impression volume, content type, depth, freshness, engagement) can flag CTR risk
+      <em>without ever reading CTR itself</em>. Using FlyRank's anonymized 30,000-row content
+      dataset (22,006 active pages, 32 pseudonymized clients), Logistic Regression and Random
+      Forest were trained on seven structural features and evaluated against a transparent
+      hand-rule baseline on an honest, client-grouped holdout split. Random Forest ties the
+      baseline's top-20 precision (1.00) with zero access to CTR and stays well clear of the
+      0.399 base rate through precision@100 (0.83); a deliberate leakage-confession test and a
+      split-honesty test both confirm the evaluation itself is sound, not just the headline
+      number. The result is a ranked, reason-coded action playbook intended as decision-support
+      for a human content reviewer — not a causal claim, not a statement about Google's ranking
+      algorithm, and not built for unsupervised automation.
+    </p>
+  </div>
+
+  <nav class="toc">
+    <div class="eyebrow">Contents</div>
+    <ol>
+      <li><a href="#intro">Introduction</a></li>
+      <li><a href="#data">Data</a></li>
+      <li><a href="#methodology">Methodology</a></li>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#limitations">Limitations</a></li>
+      <li><a href="#recommendations">Ranked recommendations</a></li>
+      <li><a href="#reproducibility">Reproducibility</a></li>
+      <li><a href="#acknowledgments">Acknowledgments &amp; data credit</a></li>
+    </ol>
+  </nav>
+
+  <section id="intro">
+    <h2>Introduction</h2>
+    <p>
+      Content that ranks well in search quietly decays or underperforms, and most teams notice
+      too late — after impressions and clicks have already trended down for weeks. Out of
+      thousands of published pages, the operationally valuable question is not "is this page
+      good?" but <em>"which page should a human check first?"</em> — a ranking and triage
+      problem on messy, real search data, exactly the kind of problem where a learned model can
+      outperform a fixed rule once signals get numerous and tangled.
+    </p>
+    <p>
+      FlyRank's own product already computes rule-based flags for this
+      (<code>needs_ctr_fix</code>, a composite health score) — hand-written thresholds that work,
+      but that a data export deliberately never includes, on purpose: a model that learns to
+      reproduce an existing decision has discovered nothing, it has just copied the rule. This
+      paper instead asks the harder, more useful version of the question: using only <em>observed</em>
+      signals — never a product decision, never CTR itself — can a model still find pages worth a
+      human's attention?
+    </p>
+  </section>
+
+  <section id="data">
+    <h2>Data</h2>
+    <p>
+      <strong>Release:</strong> the FlyRank ML Internship starter dataset,
+      <code>content_refresh_anonymized.csv</code> — 30,000 rows × 44 columns, one row per
+      pseudonymized content item, 32 pseudonymized clients, metrics aggregated over a trailing
+      90-day window ending at export time. The file ships pre-anonymized: no client names, URLs,
+      titles, or raw keywords appear anywhere in it.
+    </p>
+    <p>
+      <strong>Filter:</strong> <code>impressions_90d &ge; 100</code>, leaving 22,006 active
+      pages — pages with negligible search visibility don't carry a trustworthy CTR signal to
+      evaluate in the first place.
+    </p>
+    <h3>Excluded, and why</h3>
+    <ul>
+      <li><code>ctr</code> — deliberately excluded from every model feature set. It defines the
+        label this paper predicts; including it would turn the "model" into a lookup table.</li>
+      <li><code>trend_pct</code>, <code>trend_direction</code> — this dataset's other
+        label-derived trap (they define a separate label used elsewhere in this project). Not
+        relevant to this paper's label, and confirmed absent regardless.</li>
+      <li><code>content_id</code>, <code>client_id</code> — pseudonymous identifiers, used only
+        to group the train/test split, never as model inputs.</li>
+    </ul>
+  </section>
+
+  <section id="methodology">
+    <h2>Methodology</h2>
+    <h3>Label</h3>
+    <p>
+      <code>low_ctr_for_type</code> = 1 when a page's CTR sits at or below the 40th percentile of
+      CTR for its own <code>content_type</code>, with the threshold learned from the training
+      split only. CTR in this dataset is heavily zero-inflated (27–72% of rows are exactly 0,
+      depending on type), so the 25th percentile is 0 for every type and a strict "below" test
+      never separates any rows — the 40th percentile with "at or below" is the lowest cut that
+      actually does.
+    </p>
+    <h3>Features</h3>
+    <p>
+      Seven numeric — <code>avg_position</code>, <code>impressions_90d</code>,
+      <code>word_count</code>, <code>content_age_days</code>, <code>days_since_last_update</code>,
+      <code>engagement_rate</code>, <code>scroll_rate</code> — plus one categorical,
+      <code>content_type</code>. <code>ctr</code> excluded by design.
+    </p>
+    <h3>Baseline</h3>
+    <p>
+      A transparent hand-rule: <code>visibility_score &times; position_reachable_gate &times;
+      ctr_gap_vs_own_type_median</code>, one reason code, one action threshold. Because the
+      baseline is a rule rather than a fitted model, it is allowed to read <code>ctr</code>
+      directly — a distinction that matters for reading the Results section honestly.
+    </p>
+    <h3>Validation design</h3>
+    <p>
+      Every split in this paper is grouped by <code>client_id</code>
+      (<code>GroupShuffleSplit</code>, 75/25, seed 42), never a random row split. A random split
+      lets pages from the same client land in both train and test, letting a model partly
+      memorize client-level patterns instead of learning something that generalizes to a client
+      it has never seen.
+    </p>
+    <h3>Leakage checks</h3>
+    <ol>
+      <li><strong>Train-with / train-without:</strong> add <code>ctr</code> back as a feature and
+        confirm precision jumps to a suspiciously perfect 1.00 at every K, then remove it and
+        confirm the honest, lower number returns.</li>
+      <li><strong>Split-honesty test:</strong> compare a naive random split against the grouped
+        split, checking client overlap between train and test directly — not just trusting
+        whichever metric happens to look better.</li>
+    </ol>
+  </section>
+
+  <section id="results">
+    <h2>Results</h2>
+    <figure>
+      <img src="figures/capstone_model_vs_baseline.png" alt="Bar chart comparing baseline, logistic regression, and random forest precision at K=20, 50, 100, against the base rate">
+      <figcaption>Model vs. baseline, honest client-grouped split. Dashed line = base rate (0.399).</figcaption>
+    </figure>
+    <table>
+      <caption>Precision@K, same held-out split, same metric, base rate shown alongside every number.</caption>
+      <thead><tr><th>Model</th><th>P@20</th><th>P@50</th><th>P@100</th></tr></thead>
+      <tbody>
+        <tr><td>Baseline (reads <code>ctr</code> directly)</td><td>1.00</td><td>0.96</td><td>0.96</td></tr>
+        <tr><td>Logistic Regression (no <code>ctr</code>)</td><td>0.95</td><td>0.92</td><td>0.88</td></tr>
+        <tr class="highlight"><td>Random Forest (no <code>ctr</code>)</td><td>1.00</td><td>0.90</td><td>0.83</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Read honestly, not at face value: the baseline's near-perfect precision looks like a win,
+      but it is close to circular — it directly reads the exact signal the label thresholds. The
+      genuinely interesting result is that <strong>Random Forest, given none of that direct
+      signal, ties the baseline at the top of the ranked list (precision@20 = 1.00)</strong> and
+      stays well clear of the 0.399 base rate through precision@100. Logistic Regression trails
+      at low K but <strong>wins at precision@100</strong> (0.88 vs. 0.83) — reported as the
+      finding it is, not smoothed away.
+    </p>
+
+    <h3>Is the evaluation itself trustworthy?</h3>
+    <figure>
+      <img src="figures/capstone_split_honesty.png" alt="Two bar charts: client overlap between train and test for a naive split versus a grouped split, and precision at 50 for each">
+      <figcaption>Left: clients shared between train and test. Right: precision@50 under each split — not a clean "naive is always better" story, reported as measured.</figcaption>
+    </figure>
+    <div class="callout">
+      A naive random split shares 28 of the dataset's ~30 active clients between train and test —
+      a model evaluated that way could be partly graded on clients it already memorized. The
+      grouped split shares zero. Precision doesn't move in one clean, flattering direction
+      between the two splits; the honest takeaway isn't "grouping made the number better," it's
+      "grouping is the only version of this evaluation that actually tests generalization to an
+      unseen client," independent of which way the metric happened to move.
+    </div>
+
+    <h3>The leakage confession</h3>
+    <table>
+      <caption>Same model, same split — only the feature set changes.</caption>
+      <thead><tr><th>Feature set</th><th>P@20</th><th>P@50</th><th>P@100</th></tr></thead>
+      <tbody>
+        <tr><td>Honest — <code>ctr</code> excluded</td><td>1.00</td><td>0.90</td><td>0.83</td></tr>
+        <tr><td>Leaky — <code>ctr</code> included</td><td>1.00</td><td>1.00</td><td>1.00</td></tr>
+      </tbody>
+    </table>
+    <p>Adding <code>ctr</code> back pushes precision to a flat 1.00 at every K — the textbook
+      "suspiciously perfect" symptom of a label-derived feature — confirming the test harness
+      correctly detects leakage when it's deliberately present.</p>
+
+    <h3>What the model leans on</h3>
+    <figure>
+      <img src="figures/capstone_feature_importance.png" alt="Horizontal bar chart of permutation importance for each model feature">
+      <figcaption>Permutation importance (average precision), honest holdout split. Position and impression volume dominate.</figcaption>
+    </figure>
+    <p>
+      <code>avg_position</code> and <code>impressions_90d</code> carry most of the signal.
+      That's consistent with an earlier signal-audit finding in this project: CTR does not fall
+      smoothly as position worsens — it actually <em>peaks around position 4–5</em>, not position
+      1 — which is exactly why position is used here as a coarse reachability gate rather than a
+      linear score.
+    </p>
+  </section>
+
+  <section id="limitations">
+    <h2>Limitations</h2>
+    <ul>
+      <li><strong>Observational, not causal.</strong> Every number here comes from one static
+        snapshot. Nothing supports "changing X will cause Y" — only "pages that look like this,
+        in this data, tend to also look like that."</li>
+      <li><strong>Not a claim about Google's ranking algorithm.</strong> This model predicts a
+        property of FlyRank's own portfolio data, not search-engine behavior.</li>
+      <li><strong>Single-split evaluation.</strong> Every headline metric comes from one
+        client-grouped split (seed 42). A fully rigorous claim would average several grouped
+        splits; this paper does not.</li>
+      <li><strong>Client-level generalization is unproven</strong> beyond the 8 held-out test
+        clients — a portfolio-level average can still mask per-client variation.</li>
+      <li>The 40th-percentile label threshold fits <em>this</em> dataset's zero-inflation shape.
+        It would need re-deriving, not reusing, on a materially different export.</li>
+      <li>Position's relationship to CTR is non-monotonic in this data — a reader applying these
+        results to a different search vertical should re-verify that, not assume it.</li>
+    </ul>
+  </section>
+
+  <section id="recommendations">
+    <h2>Ranked recommendations</h2>
+    <p>
+      The validated model, refit on all 22,006 active pages, produces a ranked queue split into
+      three tiers:
+    </p>
+    <div class="tier-row">
+      <div class="tier"><span class="n">1,100</span> &nbsp;<span class="label">priority_review</span> — top 5%<div class="desc">The only tier with a directly-measured precision@20 claim behind it. Review first.</div></div>
+      <div class="tier"><span class="n">3,301</span> &nbsp;<span class="label">review_ctr</span> — next 15%<div class="desc">Still well above the 0.399 base rate (precision@100 ≈ 0.83) — real but weaker signal than the top tier.</div></div>
+      <div class="tier"><span class="n">17,605</span> &nbsp;<span class="label">monitor</span> — remaining ~80%<div class="desc">No action; re-score on the next data refresh.</div></div>
+    </div>
+    <p>
+      Within the two flagged tiers, a transparent rule — not a second model — splits by
+      <code>days_since_last_update</code> (threshold: 90 days, chosen from this dataset's own
+      distribution): pages untouched 90+ days get <strong><code>refresh_then_fix_ctr</code></strong>;
+      recently-updated pages get <strong><code>fix_ctr_titles_meta</code></strong> — a
+      title/snippet problem, not a freshness one.
+    </p>
+    <figure>
+      <img src="figures/w07_playbook_tiers_and_archetypes.png" alt="Bar charts of playbook tier sizes and average impressions by flagged archetype">
+      <figcaption>Left: tier sizes. Right: the stale-flagged archetype carries ~2.7× the average impressions of the recently-updated-flagged archetype — refresh effort lands on higher-traffic pages, not stragglers.</figcaption>
+    </figure>
+
+    <h3>Human review, before acting on any flagged row</h3>
+    <ul>
+      <li>Is the low CTR actually a title/snippet problem, or is a SERP feature suppressing
+        clicks regardless of title quality? The model has no visibility into SERP layout.</li>
+      <li>Does this page cannibalize traffic with a sibling page from the same client?</li>
+      <li>Is <code>content_type</code> correctly tagged? Scoring compares a page to its own
+        type's typical CTR — a mistagged row is scored against the wrong peer group.</li>
+      <li>For <code>refresh_then_fix_ctr</code> rows: has search intent for this query shifted
+        enough that a refresh wouldn't help regardless of freshness?</li>
+    </ul>
+
+    <div class="no-go">
+      <div class="eyebrow">Never automate</div>
+      <ul>
+        <li>Auto-publishing any title, meta description, or content change from the score alone.</li>
+        <li>Auto-redirecting, merging, or deleting flagged pages.</li>
+        <li>Using the model score as the sole input for evaluating a writer's performance.</li>
+        <li>Treating <code>priority_review</code> as proof a page is broken — it is a review
+          priority, not a verdict.</li>
+        <li>Feeding this queue into downstream automation without a human sign-off step.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="reproducibility">
+    <h2>Reproducibility</h2>
+    <p>
+      Every number and figure in this paper is regenerated by one notebook, from a fresh clone,
+      with a fixed seed:
+    </p>
+    <div class="repro-block">git clone https://github.com/Bander03/FlyRank_Intern.git
+cd FlyRank_Intern
+pip install -r requirements.txt
+jupyter notebook work/notebooks/capstone.ipynb
+# Kernel -> Restart & Run All. Seed = 42 throughout.</div>
+    <p>The full weekly trail this capstone builds on, in order:</p>
+    <ul>
+      <li><a href="https://github.com/Bander03/FlyRank_Intern/blob/main/work/notebooks/w03_data_contract.ipynb" target="_blank" rel="noopener">Data contract</a> — grain, verified queries, the leakage trap demonstrated on the warehouse release</li>
+      <li><a href="https://github.com/Bander03/FlyRank_Intern/blob/main/work/notebooks/w04_baseline_score.ipynb" target="_blank" rel="noopener">Baseline + signal audit</a> — the two signal checks and the hand-rule this paper's model is measured against</li>
+      <li><a href="https://github.com/Bander03/FlyRank_Intern/blob/main/work/notebooks/w05_model.ipynb" target="_blank" rel="noopener">Model</a> — Logistic Regression + Random Forest, first pass</li>
+      <li><a href="https://github.com/Bander03/FlyRank_Intern/blob/main/work/notebooks/w06_validation_audit.ipynb" target="_blank" rel="noopener">Validation audit</a> — the honest-split before/after and the leakage confession test</li>
+      <li><a href="https://github.com/Bander03/FlyRank_Intern/blob/main/work/notebooks/w07_action_playbook.ipynb" target="_blank" rel="noopener">Action playbook</a> — tiers, reason codes, the decay/refresh archetype split</li>
+      <li><a href="https://github.com/Bander03/FlyRank_Intern/blob/main/work/notebooks/capstone.ipynb" target="_blank" rel="noopener">Capstone</a> — this paper's own source notebook, re-deriving everything above in one run</li>
+    </ul>
+    <p><a href="https://github.com/Bander03/FlyRank_Intern" target="_blank" rel="noopener">Full repository →</a></p>
+  </section>
+
+  <section id="acknowledgments">
+    <h2>Acknowledgments &amp; data credit</h2>
+    <p>
+      Built on the <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank</a> ML
+      Internship dataset — an anonymized, public-safe slice of real production search data,
+      provided for this internship program. Thanks to the FlyRank ML track for the framework
+      this capstone follows: baseline before model, honest splits before headline numbers, and
+      limitations written by the author before a reader has to find them.
+    </p>
+  </section>
+
+  <a class="back-top" href="#">↑ Back to top</a>
+
+</main>
+
+<footer class="credit">
+  <div class="page">
+    Built on the <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank ML Internship dataset</a> ·
+    <a href="https://github.com/Bander03/FlyRank_Intern" target="_blank" rel="noopener">Repository</a> ·
+    <a href="https://bander03.github.io/" target="_blank" rel="noopener">Author portfolio</a>
+  </div>
+</footer>
+
+</body>
+</html>
